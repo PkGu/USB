@@ -167,7 +167,16 @@ with left_col:
     st.subheader("🎲 도박장")
     with st.form("gamble_form"):
         mode = st.radio("도박 종류", ["안전 (80%, 1.5배)", "고위험 (40%, 2배)"])
-        bet = st.number_input(f"베팅 금액 (1 ~ {st.session_state.gold:,})", min_value=1, max_value=st.session_state.gold, step=100)
+        
+        # 🐛 버그 수정: value 파라미터를 추가하여 현재 골드 값을 반영
+        bet = st.number_input(
+            f"베팅 금액 (1 ~ {st.session_state.gold:,})", 
+            min_value=1, 
+            max_value=st.session_state.gold, 
+            step=100,
+            value=st.session_state.gold  # 세션 상태의 골드 값을 초기값으로 설정
+        )
+        
         submitted = st.form_submit_button("베팅하기", use_container_width=True)
         if submitted:
             gamble_bet(bet, mode.split()[0])
