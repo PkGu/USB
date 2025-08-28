@@ -1,8 +1,8 @@
 import tkinter as tk
 import random
-from tkinter import simpledialog, messagebox
+from tkinter import messagebox, simpledialog
 
-# --------- 기본 게임 설정 ----------
+# --------- 기본 설정 ----------
 weapon_names = [
     "녹슨 검", "철검", "강철검", "강화 철검", "고대검",
     "마검", "화염검", "얼음검", "폭풍검", "천둥검",
@@ -14,32 +14,85 @@ weapon_names = [
 success_rates = [100, 95, 90, 85, 80, 70, 65, 60, 55, 50,
                  50, 45, 40, 35, 30, 30, 25, 20, 15, 10,
                  10, 8, 6, 4, 3, 2, 1.5, 1.2, 1.1, 1]
+max_slots = 5  # 초기 슬롯 수
 
 def upgrade_cost(level):
     return 100 + level * 150
 
-weapon_level = 0
+def get_weapon_name(level):
+    return f"+{level} {weapon_names[level]}"
+
+# --------- 상태 ----------
+inventory = []  # 여러 개의 검
+selected_index = None
 gold = 50000
-win_streak = 0  # 도박 연승
+win_streak = 0
 
-# --------- 함수들 ----------
-
+# --------- UI 함수 ----------
 def update_ui():
-    weapon_label.config(text=f"🗡️ +{weapon_level} {weapon_names[weapon_level]}")
-    gold_label.config(text=f"🪙 골드: {gold}G")
-    cost_label.config(text=f"💰 강화 비용: {upgrade_cost(weapon_level)}G")
-    rate_label.config(text=f"📈 확률: {success_rates[weapon_level]}%")
+    gold_label.config(text=f"🪙 골드: {gold:,}G")
+    weapon_listbox.delete(0, tk.END)
+    for i, lvl in enumerate(inventory):
+        weapon_listbox.insert(i, get_weapon_name(lvl))
+
+    if selected_index is not None and selected_index < len(inventory):
+        level = inventory[selected_index]
+        cost_label.config(text=f"💰 강화 비용: {upgrade_cost(level)}G")
+        rate_label.config(text=f"📈 성공 확률: {success_rates[level]}%")
+        selected_label.config(text=f"선택된 검: {get_weapon_name(level)}")
+    else:
+        cost_label.config(text="💰 강화 비용: -")
+        rate_label.config(text="📈 성공 확률: -")
+        selected_label.config(text="선택된 검 없음")
+    slot_info_label.config(text=f"🔒 슬롯: {len(inventory)}/{max_slots}")
 
 def game_over():
     messagebox.showerror("💀 게임 오버", "당신은 골드를 모두 잃고 죽었습니다...")
     enhance_button.config(state=tk.DISABLED)
     gamble_button.config(state=tk.DISABLED)
     sell_button.config(state=tk.DISABLED)
+    add_button.config(state=tk.DISABLED)
     retry_gamble_button.config(state=tk.DISABLED)
 
+def on_select(event):
+    global selected_index
+    try:
+        selected_index = weapon_listbox.curselection()[0]
+    except IndexError:
+        selected_index = None
+    update_ui()
+
+# --------- 게임 로직 ----------
+def add_weapon():
+    global gold
+    if len(inventory) >= max_slots:
+        result_label.config(text=f"⚠️ 인벤토리가 가득 찼습니다. (최대 {max_slots}개)")
+        return
+    inventory.append(0)
+    result_label.config(text="🆕 +0 검이 추가되었습니다.")
+    update_ui()
+
+def expand_slot():
+    global gold, max_slots
+    cost = (max_slots + 1) * 10000
+    if gold < cost:
+        result_label.config(text=f"❌ 슬롯 확장에 {cost:,}G 필요")
+        return
+    gold -= cost
+    max_slots += 1
+    result_label.config(text=f"📦 슬롯이 {max_slots}개로 확장되었습니다! (-{cost:,}G)")
+    update_ui()
+
+
+
 def enhance():
-    global weapon_level, gold
-    cost = upgrade_cost(weapon_level)
+    global gold
+    if selected_index is None:
+        result_label.config(text="⚠️ 검을 선택하세요.")
+        return
+
+    level = inventory[selected_index]
+    cost = upgrade_cost(level)
 
     if gold < cost:
         result_label.config(text="❌ 골드 부족! 강화 실패.")
@@ -47,95 +100,87 @@ def enhance():
 
     gold -= cost
     roll = random.uniform(0, 100)
-    success = roll <= success_rates[weapon_level]
+    success = roll <= success_rates[level]
 
     if success:
-        weapon_level += 1
+        level += 1
+        inventory[selected_index] = level
         result = "✅ 강화 성공!"
     else:
-        if weapon_level >= 25:
-            weapon_level = 0
+        if level >= 25:
+            inventory[selected_index] = 0
             gold = 500
             result = "💥 검이 폭☆발했다! 모든 것이 사라졌다..."
-        elif weapon_level >= 20:
-            if random.random() < 0.5:
-                weapon_level = 0
-                result = "⚠️ 검이 부서졌습니다. +0으로 초기화!"
-            else:
-                weapon_level = max(weapon_level - 3, 0)
-                result = "📉 단계 대폭 하락!"
-        elif weapon_level >= 10:
-            weapon_level = max(weapon_level - 2, 0)
+        elif level >= 20:
+            inventory[selected_index] = 0 if random.random() < 0.5 else max(level - 3, 0)
+            result = "⚠️ 대실패! 단계 초기화 or 대폭 하락!"
+        elif level >= 10:
+            inventory[selected_index] = max(level - 2, 0)
             result = "📉 단계 하락!"
-        elif weapon_level >= 5:
-            weapon_level = max(weapon_level - 1, 0)
+        elif level >= 5:
+            inventory[selected_index] = max(level - 1, 0)
             result = "📉 약간 하락!"
         else:
-            result = "😌 다행히 아무 일도 일어나지 않았습니다."
+            result = "😌 아무 일도 일어나지 않았습니다."
 
     update_ui()
     result_label.config(text=result)
-
-    if weapon_level >= 30:
-        result_label.config(text="🎉🎉🎉 +30 울트라 짱짱 센 검 완성!!! 🎉🎉🎉")
-        disable_buttons()
 
     if gold <= 0:
         game_over()
 
 def sell_weapon():
-    global weapon_level, gold
+    global gold
+    if selected_index is None:
+        result_label.config(text="⚠️ 검을 선택하세요.")
+        return
 
-    if weapon_level <= 3:
+    level = inventory[selected_index]
+    if level <= 3:
         result_label.config(text="🪓 +3 이하 검은 쓰레기입니다. 팔 수 없습니다.")
         return
 
-    sell_price = int((weapon_level ** 2.3) * 100)
-    gold += sell_price
-    result_label.config(text=f"💰 +{weapon_level} 검 판매! +{sell_price:,}G 획득!")
+    price = int((level ** 2.3) * 100)
+    gold += price
+    result_label.config(text=f"💰 {get_weapon_name(level)} 판매! +{price:,}G")
 
-    weapon_level = 0
+    del inventory[selected_index]
     update_ui()
 
-def disable_buttons():
-    enhance_button.config(state=tk.DISABLED)
-    gamble_button.config(state=tk.DISABLED)
-    sell_button.config(state=tk.DISABLED)
-    retry_gamble_button.config(state=tk.DISABLED)
-
-# 중독 도박 로직
 def gamble():
     global gold, win_streak
+
     if gold <= 0:
         game_over()
         return
 
-    # 위험도 선택
-    choice = simpledialog.askstring("🎰 도박장", "도박 종류를 선택하세요:\n1. 안전 (80% 확률, 1.5배)\n2. 고위험 (40% 확률, 2배)\n입력: 1 or 2")
-    if not choice or choice not in ['1', '2']:
+    mode = simpledialog.askstring("🎰 도박장", "도박 종류 선택:\n1. 안전 (80%, 1.5배)\n2. 고위험 (40%, 2배)\n입력: 1 or 2")
+    if not mode or mode not in ['1', '2']:
         return
 
-    mode = int(choice)
     bet = simpledialog.askinteger("💸 베팅", f"얼마를 걸겠습니까? (1 ~ {gold})", minvalue=1, maxvalue=gold)
     if bet is None:
         return
 
-    if mode == 1:
-        win_chance = 0.8
-        multiplier = 1.5
-    else:
-        win_chance = 0.4
-        multiplier = 2
+    win_chance = 0.8 if mode == '1' else 0.4
+    multiplier = 1.5 if mode == '1' else 2
 
     if random.random() < win_chance:
         winnings = int(bet * multiplier)
         gold += winnings
         win_streak += 1
-        result_label.config(text=f"🎉 도박 성공! +{winnings}G (연승 {win_streak}회)")
+        result_label.config(text=f"🎉 도박 성공! +{winnings:,}G (연승 {win_streak}회)", fg="green", bg=root.cget("bg"))
     else:
         gold -= bet
         win_streak = 0
-        result_label.config(text=f"💥 도박 실패! -{bet}G")
+        result_label.config(text=f"💥 도박 실패! -{bet:,}G", fg="red", bg="black")
+        result_label.after(500, lambda: result_label.config(fg="black", bg=root.cget("bg")))
+
+    update_ui()
+    retry_gamble_button.config(state=tk.NORMAL)
+
+    if gold <= 0:
+        game_over()
 
     update_ui()
     retry_gamble_button.config(state=tk.NORMAL)
@@ -146,38 +191,51 @@ def gamble():
 def retry_gamble():
     gamble()
 
-# --------- UI 구성 ----------
+# --------- UI ----------
 root = tk.Tk()
-root.title("강화 뇌절 게임 - 중독 도박장 포함")
-root.geometry("420x450")
+root.title("강화 지옥 - 인벤토리 시스템")
+root.geometry("500x520")
 root.resizable(False, False)
 
-weapon_label = tk.Label(root, text="", font=("Arial", 16))
-weapon_label.pack(pady=10)
+slot_info_label = tk.Label(root, text="", font=("Arial", 11))
+slot_info_label.pack()
 
 gold_label = tk.Label(root, text="", font=("Arial", 12))
-gold_label.pack()
+gold_label.pack(pady=5)
 
-cost_label = tk.Label(root, text="", font=("Arial", 12))
+weapon_listbox = tk.Listbox(root, height=6, font=("Arial", 12))
+weapon_listbox.pack(pady=5)
+weapon_listbox.bind("<<ListboxSelect>>", on_select)
+
+selected_label = tk.Label(root, text="선택된 검 없음", font=("Arial", 12))
+selected_label.pack()
+
+cost_label = tk.Label(root, text="💰 강화 비용: -", font=("Arial", 12))
 cost_label.pack()
 
-rate_label = tk.Label(root, text="", font=("Arial", 12))
+rate_label = tk.Label(root, text="📈 성공 확률: -", font=("Arial", 12))
 rate_label.pack()
 
-enhance_button = tk.Button(root, text="🔨 강화하기", font=("Arial", 14), command=enhance)
-enhance_button.pack(pady=8)
+enhance_button = tk.Button(root, text="🔨 강화하기", font=("Arial", 13), command=enhance)
+enhance_button.pack(pady=5)
 
-gamble_button = tk.Button(root, text="🎲 도박장 가기", font=("Arial", 14), command=gamble)
-gamble_button.pack(pady=5)
-
-retry_gamble_button = tk.Button(root, text="🔁 다시 도박하기", font=("Arial", 12), command=retry_gamble, state=tk.DISABLED)
-retry_gamble_button.pack(pady=5)
-
-sell_button = tk.Button(root, text="💰 검 판매하기", font=("Arial", 14), command=sell_weapon)
+sell_button = tk.Button(root, text="💰 검 판매", font=("Arial", 13), command=sell_weapon)
 sell_button.pack(pady=5)
 
+gamble_button = tk.Button(root, text="🎲 도박장", font=("Arial", 13), command=gamble)
+gamble_button.pack(pady=5)
+
+retry_gamble_button = tk.Button(root, text="🔁 다시 도박하기", font=("Arial", 11), command=retry_gamble, state=tk.DISABLED)
+retry_gamble_button.pack(pady=5)
+
+add_button = tk.Button(root, text="➕ 새 검 추가", font=("Arial", 12), command=add_weapon)
+add_button.pack(pady=5)
+
+expand_button = tk.Button(root, text="📦 슬롯 확장 구매", font=("Arial", 12), command=expand_slot)
+expand_button.pack(pady=5)
+
 result_label = tk.Label(root, text="", font=("Arial", 12), fg="red")
-result_label.pack(pady=15)
+result_label.pack(pady=10)
 
 update_ui()
 root.mainloop()
