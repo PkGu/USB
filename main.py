@@ -22,14 +22,17 @@ def upgrade_cost(level):
 def get_weapon_name(level):
     return f"+{level} {weapon_names[level]}"
 
-# --------- 세션 상태 초기화 ----------
-if 'gold' not in st.session_state:
+def reset_game():
     st.session_state.gold = 50000
     st.session_state.inventory = []
     st.session_state.max_slots = 5
     st.session_state.win_streak = 0
     st.session_state.result_msg = ""
     st.session_state.selected_weapon_index = None
+
+# --------- 세션 상태 초기화 ----------
+if 'gold' not in st.session_state:
+    reset_game()
 
 # --------- 게임 로직 ----------
 def add_weapon():
@@ -128,7 +131,7 @@ st.title("강화 지옥 🔥")
 if st.session_state.gold <= 0:
     st.error("💀 게임 오버: 당신은 골드를 모두 잃고 죽었습니다...")
     if st.button("재시작"):
-        st.session_state.clear()
+        reset_game()
         st.experimental_rerun()
     st.stop()
 
