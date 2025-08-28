@@ -194,48 +194,80 @@ def retry_gamble():
 # --------- UI ----------
 root = tk.Tk()
 root.title("강화 지옥 - 인벤토리 시스템")
-root.geometry("500x520")
+root.geometry("700x520")  # 가로 넓힘
 root.resizable(False, False)
 
-slot_info_label = tk.Label(root, text="", font=("Arial", 11))
+# 좌우 프레임 만들기
+left_frame = tk.Frame(root)
+left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
+
+right_frame = tk.Frame(root)
+right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+# --- 기존 UI 위젯들을 left_frame에 넣기 ---
+slot_info_label = tk.Label(left_frame, text="", font=("Arial", 11))
 slot_info_label.pack()
 
-gold_label = tk.Label(root, text="", font=("Arial", 12))
+gold_label = tk.Label(left_frame, text="", font=("Arial", 12))
 gold_label.pack(pady=5)
 
-weapon_listbox = tk.Listbox(root, height=6, font=("Arial", 12))
+weapon_listbox = tk.Listbox(left_frame, height=6, font=("Arial", 12))
 weapon_listbox.pack(pady=5)
 weapon_listbox.bind("<<ListboxSelect>>", on_select)
 
-selected_label = tk.Label(root, text="선택된 검 없음", font=("Arial", 12))
+selected_label = tk.Label(left_frame, text="선택된 검 없음", font=("Arial", 12))
 selected_label.pack()
 
-cost_label = tk.Label(root, text="💰 강화 비용: -", font=("Arial", 12))
+cost_label = tk.Label(left_frame, text="💰 강화 비용: -", font=("Arial", 12))
 cost_label.pack()
 
-rate_label = tk.Label(root, text="📈 성공 확률: -", font=("Arial", 12))
+rate_label = tk.Label(left_frame, text="📈 성공 확률: -", font=("Arial", 12))
 rate_label.pack()
 
-enhance_button = tk.Button(root, text="🔨 강화하기", font=("Arial", 13), command=enhance)
+enhance_button = tk.Button(left_frame, text="🔨 강화하기", font=("Arial", 13), command=enhance)
 enhance_button.pack(pady=5)
 
-sell_button = tk.Button(root, text="💰 검 판매", font=("Arial", 13), command=sell_weapon)
+sell_button = tk.Button(left_frame, text="💰 검 판매", font=("Arial", 13), command=sell_weapon)
 sell_button.pack(pady=5)
 
-gamble_button = tk.Button(root, text="🎲 도박장", font=("Arial", 13), command=gamble)
+gamble_button = tk.Button(left_frame, text="🎲 도박장", font=("Arial", 13), command=gamble)
 gamble_button.pack(pady=5)
 
-retry_gamble_button = tk.Button(root, text="🔁 다시 도박하기", font=("Arial", 11), command=retry_gamble, state=tk.DISABLED)
+retry_gamble_button = tk.Button(left_frame, text="🔁 다시 도박하기", font=("Arial", 11), command=retry_gamble, state=tk.DISABLED)
 retry_gamble_button.pack(pady=5)
 
-add_button = tk.Button(root, text="➕ 새 검 추가", font=("Arial", 12), command=add_weapon)
+add_button = tk.Button(left_frame, text="➕ 새 검 추가", font=("Arial", 12), command=add_weapon)
 add_button.pack(pady=5)
 
-expand_button = tk.Button(root, text="📦 슬롯 확장 구매", font=("Arial", 12), command=expand_slot)
+expand_button = tk.Button(left_frame, text="📦 슬롯 확장 구매", font=("Arial", 12), command=expand_slot)
 expand_button.pack(pady=5)
 
-result_label = tk.Label(root, text="", font=("Arial", 12), fg="red")
+result_label = tk.Label(left_frame, text="", font=("Arial", 12), fg="red")
 result_label.pack(pady=10)
+
+# --- 오른쪽에 게임 설명 및 가격표 넣기 ---
+game_explanation = """
+🎮 게임 설명
+
+- 검을 강화하여 최고의 무기를 만드세요.
+- 강화 단계가 높아질수록 성공 확률이 낮아지고 강화 비용은 증가합니다.
+- 인벤토리는 슬롯 수 만큼 검을 보유할 수 있습니다.
+- 슬롯 확장 구매로 최대 슬롯을 늘릴 수 있습니다.
+- 골드를 모두 잃으면 게임이 종료됩니다.
+
+💰 가격표 및 확률 정보
+
+- 슬롯 확장 비용: (현재 슬롯 + 1) × 10,000G
+- 검 판매 가격: 강화 단계에 따라 다름 (+3 이하 검은 판매 불가)
+- 강화 비용: 100 + 강화 단계 × 150 G
+- 강화 성공 확률: 단계별 성공 확률이 다름 (게임 내 표 참고)
+- 도박장 정보:
+    1) 안전 도박 - 성공 확률 80%, 보상 1.5배
+    2) 고위험 도박 - 성공 확률 40%, 보상 2배
+"""
+
+explanation_label = tk.Label(right_frame, text=game_explanation, justify=tk.LEFT, font=("Arial", 12), anchor="nw")
+explanation_label.pack(fill=tk.BOTH, expand=True)
 
 update_ui()
 root.mainloop()
